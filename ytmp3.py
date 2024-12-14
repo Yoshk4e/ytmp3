@@ -1,13 +1,18 @@
 import os
 import re
-import time  # Import time for delays
+import time
 from yt_dlp import YoutubeDL
 from tqdm import tqdm
 from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy
 import requests
 import sys
+from datetime import datetime
+import tempfile
+import zipfile
+import atexit
 
+#lol
 # Configure Spotify API
 SPOTIPY_CLIENT_ID = "0b4c97daa7d04fd5a9e72c7c5a91b714"
 SPOTIPY_CLIENT_SECRET = "afd0dfc5246649c4ba4118293876485a"
@@ -16,42 +21,108 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
 # Raw GitHub URL for the script
-RAW_GITHUB_URL = "https://raw.githubusercontent.com/Yoshk4e/ytmp3/refs/heads/main/ytmp3.py"  # Replace with your raw URL
+GITHUB_API_RELEASES_URL = "https://api.github.com/repos/Yoshk4e/ytmp3/releases/latest"
 CURRENT_SCRIPT_PATH = os.path.abspath(__file__)
+LOG_FILE = "script_log.txt"
+temp_zip_path = None
+
+
+def log_event(message):
+    """
+    Logs a message with a timestamp to a log file.
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message = f"[{timestamp}] {message}\n"
+    print(log_message.strip())
+    with open(LOG_FILE, "a", encoding="utf-8") as log_file:
+        log_file.write(log_message)
+
+# Define the current script version
+CURRENT_VERSION = "1.5"  # Update this value with each new script version
 
 def check_for_updates():
     """
-    Check if there's an updated script version on GitHub. If found, replace the current file and relaunch.
+    Check if there's an updated script version on GitHub. If found, download and apply it.
     """
-    print("Checking for updates...")
+    global temp_zip_path
+    global CURRENT_VERSION
+
+    log_event("Checking for updates...")
     try:
-        response = requests.get(RAW_GITHUB_URL, timeout=5)
+        response = requests.get(GITHUB_API_RELEASES_URL, timeout=5)
         if response.status_code == 200:
-            latest_script = response.text
+            release_data = response.json()
+            latest_version = release_data["tag_name"]
+            zip_url = f"https://github.com/Yoshk4e/ytmp3/archive/refs/tags/{latest_version}.zip"
 
-            # Compare current script with the latest script
-            with open(CURRENT_SCRIPT_PATH, "r", encoding="utf-8") as current_script_file:
-                current_script = current_script_file.read()
+            log_event(f"Current version: {CURRENT_VERSION}, Latest version: {latest_version}")
+            if CURRENT_VERSION == latest_version:
+                log_event("You are already using the latest version.")
+                return
 
-            if current_script != latest_script:
-                print("Update found! Downloading the latest version...")
-                # Write the updated script to the current file
-                with open(CURRENT_SCRIPT_PATH, "w", encoding="utf-8") as current_script_file:
-                    current_script_file.write(latest_script)
+            log_event("A new version is available.")
+            update_choice = input(f"A new version ({latest_version}) is available. You are using version {CURRENT_VERSION}. Do you want to update now? (yes/no): ").strip().lower()
 
-                print("Update applied. Relaunching the script...")
-                # Relaunch the updated script
-                os.execv(sys.executable, [sys.executable] + sys.argv)
-            else:
-                print("You're already using the latest version.")
+            if update_choice in ["yes", "y"]:
+                log_event("User chose to update the script.")
+
+                temp_dir = tempfile.mkdtemp()
+                temp_zip_path = os.path.join(temp_dir, "latest_release.zip")
+                log_event(f"ZIP file will be saved at: {temp_zip_path}")
+
+                # Register cleanup to delete the ZIP file on script exit
+                def cleanup_temp_zip():
+                    if temp_zip_path and os.path.exists(temp_zip_path):
+                        log_event(f"Cleaning up temporary file: {temp_zip_path}")
+                        os.remove(temp_zip_path)
+                    if os.path.exists(temp_dir):
+                        os.rmdir(temp_dir)
+
+                atexit.register(cleanup_temp_zip)
+
+                # Download the ZIP file
+                with requests.get(zip_url, stream=True) as r:
+                    with open(temp_zip_path, "wb") as zip_file:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            zip_file.write(chunk)
+
+                log_event(f"Downloaded ZIP file to: {temp_zip_path}")
+
+                # Extract the ZIP file
+                log_event("Extracting the latest release ZIP file...")
+                with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
+                    zip_ref.extractall(temp_dir)
+
+                # Locate the extracted script
+                extracted_folder = next(os.scandir(f"{temp_dir}\\ytmp3-{latest_version}")).path
+                extracted_script = "ytmp3.py"
+                for root, _, files in os.walk(extracted_folder):
+                    for file in files:
+                        if file == os.path.basename(CURRENT_SCRIPT_PATH):
+                            extracted_script = os.path.join(root, file)
+                            break
+
+                if extracted_script:
+                    # Replace the current script
+                    log_event("Updating the script with the latest version...")
+                    with open(extracted_script, "r", encoding="utf-8") as new_script_file:
+                        new_script = new_script_file.read()
+
+                    with open(CURRENT_SCRIPT_PATH, "w", encoding="utf-8") as current_script_file:
+                        current_script_file.write(new_script)
+
+                    log_event("Update applied.")
+                else:
+                    log_event("Failed to locate the script in the extracted files.")
         else:
-            print(f"Failed to check for updates. HTTP Status Code: {response.status_code}")
+            log_event(f"Failed to check for updates. HTTP Status Code: {response.status_code}")
     except Exception as e:
-        print(f"An error occurred while checking for updates: {e}")
+        log_event(f"An error occurred while checking for updates: {e}")
 
-
+        
 def validate_license():
     license_key = input("Enter your license key: ").strip()
+    log_event("Validating license key...")
     server_url = "https://shiny-julie-hold-b375e5fd.koyeb.app/validate-license"
 
     try:
@@ -59,27 +130,28 @@ def validate_license():
         if response.status_code == 200:
             validation_data = response.json()
             if validation_data.get("status") == "valid":
-                print(f"Welcome, {validation_data['user']}! License validated successfully.")
+                log_event(f"License validated for user: {validation_data['user']}")
                 return True
             else:
-                print("Invalid license key. Access denied.")
+                log_event("Invalid license key. Access denied.")
         else:
-            print("Error communicating with the license server. Please try again later.")
+            log_event("Error communicating with the license server.")
     except Exception as e:
-        print(f"An error occurred during license validation: {e}")
+        log_event(f"An error occurred during license validation: {e}")
 
     return False
 
 def sanitize_filename(filename):
     invalid_chars = r'[<>:"/\\|?*]'
+    log_event(f"Sanitizing filename: {filename}")
     if re.search(invalid_chars, filename):
         filename = filename.replace(' ', '_')
         filename = re.sub(invalid_chars, '', filename)
+    log_event(f"Sanitized filename: {filename}")
     return filename
 
 def download_youtube_video_as_mp3(video_url, output_directory, filename):
     output_file = os.path.join(output_directory, f"{filename}")
-
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_file,
@@ -87,9 +159,9 @@ def download_youtube_video_as_mp3(video_url, output_directory, filename):
         "external_downloader": "aria2c",
         "external_downloader_args": [
             "--file-allocation=none",
-            "--max-connection-per-server=16",  # Use up to 16 connections per server
-            "--split=16",  # Split the file into 16 parts
-            "--min-split-size=1M"  # Minimum size of each part
+            "--max-connection-per-server=16",
+            "--split=16",
+            "--min-split-size=1M"
         ],
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
@@ -98,9 +170,14 @@ def download_youtube_video_as_mp3(video_url, output_directory, filename):
         }],
     }
 
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_url])
-
+    log_event(f"Downloading video: {video_url} as MP3")
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([video_url])
+        log_event(f"Download completed: {filename}")
+    except Exception as e:
+        log_event(f"Failed to download {video_url}: {e}")
+        
 def get_youtube_link_from_spotify_track(track_name, artist_name):
     search_query = f"{track_name} {artist_name} lyrics"
     ydl_opts = {
@@ -187,18 +264,22 @@ def download_spotify_playlist(playlist_url, output_directory):
 
     progress_bar.close()
 
-    
 def main():
     # Check for updates on script launch
     check_for_updates()
 
     if not validate_license():
+        log_event("License validation failed. Exiting program.")
         return
+
+    log_event("Program started.")
 
     print("Welcome to the MP3 Downloader!")
     print("Supports YouTube and Spotify playlists.")
     output_directory = input("Enter the directory to save the MP3 files: ")
+    log_event(f"Output directory set to: {output_directory}")
     mode = input("Do you want to download from YouTube or Spotify? (youtube/spotify): ").strip().lower()
+    log_event(f"Download mode selected: {mode}")
 
     if mode == "youtube":
         video_url = input("Enter the YouTube video URL: ")
@@ -211,7 +292,6 @@ def main():
         print("Invalid mode selected. Please choose 'youtube' or 'spotify'.")
 
     print("\nAll downloads are complete!")
-
 
 if __name__ == "__main__":
     main()
