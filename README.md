@@ -21,41 +21,45 @@ A Python script that allows you to download audio from YouTube videos and conver
 ## Installation
 
 1. Clone the repository:
-   ```bash
+   ```
    git clone https://github.com/yourusername/ytmp3-downloader.git
    cd ytmp3-downloader
-Install the required Python libraries:
+   
+##Install the required Python libraries:
 
-pip install yt_dlp pydub
+```pip install yt_dlp pydub spotipy```
 
-Install ffmpeg:
+##Install ffmpeg:
 
-Windows: Download from FFmpeg.org and add it to your PATH.
-Linux:
+##Windows: Download from FFmpeg.org and add it to your PATH.
 
-sudo apt update
-sudo apt install ffmpeg
-MacOS:
+##Linux:
 
-brew install ffmpeg
+```sudo apt update```
+```sudo apt install ffmpeg```
+##MacOS:
 
-Install aria2c:
+```brew install ffmpeg```
 
-search google
+##Install aria2c:
 
-Run the script:
+```search google```
 
-python ytmp3.py
+##Run the script:
+
+```python ytmp3.py```
 
 
 
-@Known Issues
+##@Known Issues
 Some videos may not download due to region restrictions or YouTube's protections. Use a VPN or proxy if needed.
 Contributions
 Contributions are welcome! Feel free to fork this repository, make changes, and submit a pull request.
 
-License
+##License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
-Disclaimer: This script is intended for personal use only. Ensure compliance with YouTube's Terms of Service.
+##Disclaimer
+
+This script is intended for personal use only. Ensure compliance with YouTube's Terms of Service.
 
