@@ -15,8 +15,8 @@ import shutil
 
 #there is nothing new dumbass
 # Configure Spotify API
-SPOTIPY_CLIENT_ID = "0b4c97daa7d04fd5a9e72c7c5a91b714"
-SPOTIPY_CLIENT_SECRET = "afd0dfc5246649c4ba4118293876485a"
+SPOTIPY_CLIENT_ID = "YOUR_CLIENT_ID"
+SPOTIPY_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
 
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
     client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
