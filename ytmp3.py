@@ -38,7 +38,7 @@ def log_event(message):
         log_file.write(log_message)
 
 # Define the current script version
-CURRENT_VERSION = "1.6"  # Update this value with each new script version
+CURRENT_VERSION = "1.8"  # Update this value with each new script version
 
 def check_for_updates():
     """
