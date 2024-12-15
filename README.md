@@ -1,4 +1,4 @@
-# YT-MP3 Downloader
+# YT-MP3 Downloader (it's mainly for spotify)
 
 A Python script that allows you to download audio from YouTube videos and convert them to MP3 format using `yt_dlp` and `pydub`.
 
@@ -12,6 +12,8 @@ A Python script that allows you to download audio from YouTube videos and conver
 
 - Python 3.9+
 - Libraries:
+- `spotipy`
+- `aria2c`: (optional but faster)
   - `yt_dlp`: For downloading YouTube videos.
   - `pydub`: For converting and handling audio files.
   - `ffmpeg` or `libav`: Required by `pydub` for audio processing.
@@ -37,9 +39,13 @@ MacOS:
 
 brew install ffmpeg
 
+Install aria2c:
+
+search google
+
 Run the script:
 
-python ytmp3_downloader.py
+python ytmp3.py
 
 
 
