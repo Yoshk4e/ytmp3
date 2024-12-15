@@ -11,8 +11,9 @@ from datetime import datetime
 import tempfile
 import zipfile
 import atexit
+import shutil
 
-#lol
+
 # Configure Spotify API
 SPOTIPY_CLIENT_ID = "0b4c97daa7d04fd5a9e72c7c5a91b714"
 SPOTIPY_CLIENT_SECRET = "afd0dfc5246649c4ba4118293876485a"
@@ -23,6 +24,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
 # Raw GitHub URL for the script
 GITHUB_API_RELEASES_URL = "https://api.github.com/repos/Yoshk4e/ytmp3/releases/latest"
 CURRENT_SCRIPT_PATH = os.path.abspath(__file__)
+CURRENT_PATH = os.getcwd()
 LOG_FILE = "script_log.txt"
 temp_zip_path = None
 
@@ -38,12 +40,9 @@ def log_event(message):
         log_file.write(log_message)
 
 # Define the current script version
-CURRENT_VERSION = "1.8"  # Update this value with each new script version
+CURRENT_VERSION = "1.9"  # Update this value with each new script version
 
 def check_for_updates():
-    """
-    Check if there's an updated script version on GitHub. If found, download and apply it.
-    """
     global temp_zip_path
     global CURRENT_VERSION
 
@@ -63,14 +62,18 @@ def check_for_updates():
             log_event("A new version is available.")
             update_choice = input(f"A new version ({latest_version}) is available. You are using version {CURRENT_VERSION}. Do you want to update now? (yes/no): ").strip().lower()
 
+            if update_choice in ["no", "n"]:
+                log_event("user chose not to update.")
+                return
+
             if update_choice in ["yes", "y"]:
                 log_event("User chose to update the script.")
+
 
                 temp_dir = tempfile.mkdtemp()
                 temp_zip_path = os.path.join(temp_dir, "latest_release.zip")
                 log_event(f"ZIP file will be saved at: {temp_zip_path}")
 
-                # Register cleanup to delete the ZIP file on script exit
                 def cleanup_temp_zip():
                     if temp_zip_path and os.path.exists(temp_zip_path):
                         log_event(f"Cleaning up temporary file: {temp_zip_path}")
@@ -80,7 +83,6 @@ def check_for_updates():
 
                 atexit.register(cleanup_temp_zip)
 
-                # Download the ZIP file
                 with requests.get(zip_url, stream=True) as r:
                     with open(temp_zip_path, "wb") as zip_file:
                         for chunk in r.iter_content(chunk_size=8192):
@@ -88,14 +90,12 @@ def check_for_updates():
 
                 log_event(f"Downloaded ZIP file to: {temp_zip_path}")
 
-                # Extract the ZIP file
                 log_event("Extracting the latest release ZIP file...")
                 with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
                     zip_ref.extractall(temp_dir)
 
-                # Locate the extracted script
                 extracted_folder = next(os.scandir(f"{temp_dir}\\ytmp3-{latest_version}")).path
-                extracted_script = "ytmp3.py"
+                extracted_script = extracted_folder
                 for root, _, files in os.walk(extracted_folder):
                     for file in files:
                         if file == os.path.basename(CURRENT_SCRIPT_PATH):
@@ -103,23 +103,35 @@ def check_for_updates():
                             break
 
                 if extracted_script:
-                    # Replace the current script
-                    log_event("Updating the script with the latest version...")
-                    with open(extracted_script, "r", encoding="utf-8") as new_script_file:
-                        new_script = new_script_file.read()
+                    log_event(f"Verifying updated script version in {extracted_script}...")
+    
+                # Check if the updated script contains the __version__ variable
+                with open(extracted_script, "r", encoding="utf-8") as new_script_file:
+                    new_script = new_script_file.read()
+    
+                if "CURRENT_VERSION" in new_script:
+                    log_event(f"Updated script contents (partial preview): {new_script.splitlines()[:10]}")  # Show first 10 lines for debugging
+    
+                    log_event(f"Copying the latest version of the script from {extracted_script} to {CURRENT_PATH}...")
+                if os.path.exists(CURRENT_SCRIPT_PATH):
+                    os.remove(CURRENT_SCRIPT_PATH)
+    
 
-                    with open(CURRENT_SCRIPT_PATH, "w", encoding="utf-8") as current_script_file:
-                        current_script_file.write(new_script)
+                # Copy the updated script to replace the current script
+                    shutil.copy(extracted_script, CURRENT_PATH)
+    
+                    log_event("Update applied. Relaunching...")
+    
+                # Relaunch the updated script
+                    os.execv(sys.executable, ['"{}"'.format(sys.executable)] + sys.argv)
 
-                    log_event("Update applied.")
-                else:
-                    log_event("Failed to locate the script in the extracted files.")
+            else:
+                log_event("Failed to locate the script in the extracted files.")
         else:
             log_event(f"Failed to check for updates. HTTP Status Code: {response.status_code}")
     except Exception as e:
         log_event(f"An error occurred while checking for updates: {e}")
 
-        
 def validate_license():
     license_key = input("Enter your license key: ").strip()
     log_event("Validating license key...")
