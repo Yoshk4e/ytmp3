@@ -93,7 +93,10 @@ THIS SCRIPT IS AN OLD COLLAB BETWEEN ME AND ONE OF MY BSFs
 
 ## @Known Issues
 Some videos may not download due to region restrictions or YouTube's protections. Use a VPN or proxy if needed.
-Contributions
+The update function is broken for some reaseon feel free to fix it as of now i can't fix it so just manual update
+
+
+## Contributions
 Contributions are welcome! Feel free to fork this repository, make changes, and submit a pull request.
 
 ## License
