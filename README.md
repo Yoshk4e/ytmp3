@@ -22,7 +22,7 @@ A Python script that allows you to download audio from YouTube videos and spotif
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ytmp3-downloader.git
+   git clone https://github.com/Yoshk4e/ytmp3.git
    cd ytmp3-downloader
    ```
 ## Install the required Python libraries:
